@@ -28,20 +28,12 @@ mod error;
 pub use crate::error::*;
 mod ordqueue;
 use crate::ordqueue::*;
-pub mod progress;
-use crate::progress::*;
-pub mod c_api;
 mod denoise;
 use crate::denoise::*;
 mod encoderust;
 
-#[cfg(feature = "gifsicle")]
-mod encodegifsicle;
-
 use crossbeam_channel::{Receiver, Sender};
 use std::io::prelude::*;
-use std::path::PathBuf;
-use std::thread;
 use std::borrow::Cow;
 
 type DecodedImage = CatResult<(ImgVec<RGBA8>, f64)>;
@@ -205,28 +197,6 @@ impl Collector {
         self.queue.push(frame_index, Ok((Self::resized_binary_alpha(image.into(), self.width, self.height)?, presentation_timestamp)))
     }
 
-    pub(crate) fn add_frame_rgba_cow(&mut self, frame_index: usize, image: Img<Cow<[RGBA8]>>, presentation_timestamp: f64) -> CatResult<()> {
-        debug_assert!(frame_index == 0 || presentation_timestamp > 0.);
-        self.queue.push(frame_index, Ok((Self::resized_binary_alpha(image, self.width, self.height)?, presentation_timestamp)))
-    }
-
-    /// Read and decode a PNG file from disk.
-    ///
-    /// Frame index starts at 0.
-    ///
-    /// Presentation timestamp is time in seconds (since file start at 0) when this frame is to be displayed.
-    ///
-    /// If the first frame doesn't start at pts=0, the delay will be used for the last frame.
-    pub fn add_frame_png_file(&mut self, frame_index: usize, path: PathBuf, presentation_timestamp: f64) -> CatResult<()> {
-        let width = self.width;
-        let height = self.height;
-        let image = lodepng::decode32_file(&path)
-            .map_err(|err| Error::PNG(format!("Can't load {}: {}", path.display(), err)))?;
-
-        let image = Img::new(image.buffer.into(), image.width, image.height);
-        self.queue.push(frame_index, Ok((Self::resized_binary_alpha(image, width, height)?, presentation_timestamp)))
-    }
-
     #[allow(clippy::identity_op)]
     #[allow(clippy::erasing_op)]
     fn resized_binary_alpha(image: Img<Cow<[RGBA8]>>, width: Option<u32>, height: Option<u32>) -> CatResult<ImgVec<RGBA8>> {
@@ -342,7 +312,7 @@ impl Writer {
         Ok((Img::new(pal_img, img.width(), img.height()), pal))
     }
 
-    fn write_frames(write_queue: Receiver<FrameMessage>, enc: &mut dyn Encoder, settings: &Settings, reporter: &mut dyn ProgressReporter) -> CatResult<()> {
+    fn write_frames(write_queue: Receiver<FrameMessage>, enc: &mut dyn Encoder, settings: &Settings) -> CatResult<()> {
         let mut pts_in_delay_units = 0_u64;
 
         let mut n_done = 0;
@@ -362,9 +332,6 @@ impl Writer {
             // loop to report skipped frames too
             while n_done < ordinal_frame_number {
                 n_done += 1;
-                if !reporter.increase() {
-                    return Err(Error::Aborted);
-                }
             }
         }
         if n_done == 0 {
@@ -377,41 +344,23 @@ impl Writer {
     /// Start writing frames. This function will not return until `Collector` is dropped.
     ///
     /// `outfile` can be any writer, such as `File` or `&mut Vec`.
-    ///
-    /// `ProgressReporter.increase()` is called each time a new frame is being written.
     #[allow(unused_mut)]
-    pub fn write<W: Write>(self, mut writer: W, reporter: &mut dyn ProgressReporter) -> CatResult<()> {
-
-        #[cfg(feature = "gifsicle")]
-        {
-            if self.settings.quality < 100 {
-                let mut gifsicle = encodegifsicle::Gifsicle::new(self.settings.gifsicle_loss(), &mut writer);
-                return self.write_with_encoder(&mut gifsicle, reporter);
-            }
-        }
-        self.write_with_encoder(&mut encoderust::RustEncoder::new(writer), reporter)
+    pub fn write<W: Write>(self, mut writer: W) -> CatResult<()> {
+        self.write_with_encoder(&mut encoderust::RustEncoder::new(writer))
     }
 
-    fn write_with_encoder(mut self, encoder: &mut dyn Encoder, reporter: &mut dyn ProgressReporter) -> CatResult<()> {
+    fn write_with_encoder(mut self, encoder: &mut dyn Encoder) -> CatResult<()> {
         let decode_queue_recv = self.queue_iter.take().ok_or(Error::Aborted)?;
 
+        // TODO: use a thread pool that works in WebAssembly Context
         let settings = self.settings;
         let (quant_queue, quant_queue_recv) = crossbeam_channel::bounded(4);
-        let diff_thread = thread::Builder::new().name("diff".into()).spawn(move || {
-            Self::make_diffs(decode_queue_recv, quant_queue, &settings)
-        })?;
+        Self::make_diffs(decode_queue_recv, quant_queue, &settings)?;
         let (remap_queue, remap_queue_recv) = crossbeam_channel::bounded(8);
-        let quant_thread = thread::Builder::new().name("quant".into()).spawn(move || {
-            Self::quantize_frames(quant_queue_recv, remap_queue, &settings)
-        })?;
+        Self::quantize_frames(quant_queue_recv, remap_queue, &settings)?;
         let (write_queue, write_queue_recv) = crossbeam_channel::bounded(6);
-        let remap_thread = thread::Builder::new().name("remap".into()).spawn(move || {
-            Self::remap_frames(remap_queue_recv, write_queue, &settings)
-        })?;
-        Self::write_frames(write_queue_recv, encoder, &self.settings, reporter)?;
-        diff_thread.join().map_err(|_| Error::ThreadSend)??;
-        quant_thread.join().map_err(|_| Error::ThreadSend)??;
-        remap_thread.join().map_err(|_| Error::ThreadSend)??;
+        Self::remap_frames(remap_queue_recv, write_queue, &settings)?;
+        Self::write_frames(write_queue_recv, encoder, &self.settings)?;
         Ok(())
     }
 

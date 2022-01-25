@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use imgref::ImgVec;
 use imgref::ImgRef;
 use rgb::RGBA8;
-use gifski::*;
+use gifskilite::*;
 
 #[test]
 fn n_frames() {
