@@ -149,7 +149,11 @@ impl<T> Denoiser<T> {
     pub fn pop(&mut self) -> Denoised<T> {
         if let Some((frame, importance_map)) = self.processed.pop() {
             let meta = self.metadatas.pop().expect("meta");
-            Denoised::Frame { frame, importance_map, meta }
+            Denoised::Frame {
+                frame,
+                importance_map,
+                meta,
+            }
         } else if !self.metadatas.is_empty() {
             Denoised::NotYet
         } else {
@@ -162,13 +166,19 @@ impl<T> Denoiser<T> {
         if let Some(curr) = acc.get(0) {
             let my_turn = cohort(curr) != odd_frame;
             let threshold = if my_turn { threshold } else { threshold * 2 };
-            let diff_with_bg = if acc.bg_set.a > 0 { color_diff(acc.bg_set.rgb(), curr) } else { 1<<20 };
+            let diff_with_bg = if acc.bg_set.a > 0 {
+                color_diff(acc.bg_set.rgb(), curr)
+            } else {
+                1 << 20
+            };
 
             if acc.stayed_for < acc.can_stay_for {
                 acc.stayed_for += 1;
                 // If this is the second, corrective frame, then
                 // give it weight proportional to its staying duration
-                let max = if acc.stayed_for > 1 { 0 } else {
+                let max = if acc.stayed_for > 1 {
+                    0
+                } else {
                     [0, 40, 80, 100, 110][acc.can_stay_for.min(4) as usize]
                 };
                 // min == 0 may wipe pixels totally clear, so give them at least a second chance,
@@ -179,7 +189,10 @@ impl<T> Denoiser<T> {
                     400..=900 if acc.stayed_for <= 1 => 1, // q >= 50
                     _ => 0,
                 };
-                return (acc.bg_set, pixel_importance(diff_with_bg, threshold, min, max));
+                return (
+                    acc.bg_set,
+                    pixel_importance(diff_with_bg, threshold, min, max),
+                );
             }
 
             // if it's still good, keep rolling with it
@@ -190,7 +203,10 @@ impl<T> Denoiser<T> {
             // See how long this bg can stay
             let mut stays_frames = 0;
             for i in 1..LOOKAHEAD {
-                if acc.get(i).map_or(false, |c| color_diff(c, curr) < threshold) {
+                if acc
+                    .get(i)
+                    .map_or(false, |c| color_diff(c, curr) < threshold)
+                {
                     stays_frames = i;
                 } else {
                     break;
@@ -200,7 +216,10 @@ impl<T> Denoiser<T> {
             // fast path for regular changing pixel
             if stays_frames == 0 {
                 acc.bg_set = curr.alpha(255);
-                return (acc.bg_set, pixel_importance(diff_with_bg, threshold, 10, 110));
+                return (
+                    acc.bg_set,
+                    pixel_importance(diff_with_bg, threshold, 10, 110),
+                );
             }
             let smoothed_curr = RGB8::new(
                 get_median(&acc.r, stays_frames + 1),
@@ -228,8 +247,10 @@ impl<T> Denoiser<T> {
                 acc.bg_set.a = 0;
                 acc.can_stay_for = 0;
                 1
-            } else { 0 };
-            (RGBA8::new(0,0,0,0), imp)
+            } else {
+                0
+            };
+            (RGBA8::new(0, 0, 0, 0), imp)
         }
     }
 }
@@ -246,7 +267,8 @@ fn cohort(color: RGB8) -> bool {
 fn pixel_importance(diff_with_bg: u32, threshold: u32, min: u8, max: u8) -> u8 {
     assert!((min as u32 + max as u32) <= 255);
     let exceeds = diff_with_bg.saturating_sub(threshold);
-    min + (exceeds.saturating_mul(max as u32) / (threshold.saturating_mul(48))).min(max as u32) as u8
+    min + (exceeds.saturating_mul(max as u32) / (threshold.saturating_mul(48))).min(max as u32)
+        as u8
 }
 
 #[inline(always)]
@@ -264,19 +286,19 @@ fn get_median(src: &[u8; LOOKAHEAD], len: usize) -> u8 {
             tmp.copy_from_slice(&src[0..3]);
             tmp.sort_unstable();
             tmp[1]
-        },
+        }
         4 => {
             let mut tmp = [0u8; 4];
             tmp.copy_from_slice(&src[0..4]);
             tmp.sort_unstable();
             avg8(tmp[1], tmp[2])
-        },
+        }
         5 => {
             let mut tmp = [0u8; 5];
             tmp.copy_from_slice(&src[0..5]);
             tmp.sort_unstable();
             tmp[2]
-        },
+        }
         _ => unreachable!(),
     }
 }
@@ -286,9 +308,7 @@ fn color_diff(x: RGB8, y: RGB8) -> u32 {
     let x = x.map(i32::from);
     let y = y.map(i32::from);
 
-    (x.r - y.r).pow(2) as u32 * 2 +
-    (x.g - y.g).pow(2) as u32 * 3 +
-    (x.b - y.b).pow(2) as u32
+    (x.r - y.r).pow(2) as u32 * 2 + (x.g - y.g).pow(2) as u32 * 3 + (x.b - y.b).pow(2) as u32
 }
 
 #[track_caller]
@@ -296,13 +316,15 @@ fn color_diff(x: RGB8, y: RGB8) -> u32 {
 fn px<T>(f: Denoised<T>) -> (RGBA8, T) {
     if let Denoised::Frame { frame, meta, .. } = f {
         (frame.pixels().nth(0).unwrap(), meta)
-    } else { panic!("no frame") }
+    } else {
+        panic!("no frame")
+    }
 }
 
 #[test]
 fn one() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(255,255,255,255);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(255, 255, 255, 255);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     assert!(matches!(d.pop(), Denoised::NotYet));
     d.flush();
@@ -312,9 +334,9 @@ fn one() {
 
 #[test]
 fn two() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(254,253,252,255);
-    let b = RGBA8::new(8,7,0,255);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(254, 253, 252, 255);
+    let b = RGBA8::new(8, 7, 0, 255);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 1);
     assert!(matches!(d.pop(), Denoised::NotYet));
@@ -326,9 +348,9 @@ fn two() {
 
 #[test]
 fn three() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(254,253,252,255);
-    let b = RGBA8::new(8,7,0,255);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(254, 253, 252, 255);
+    let b = RGBA8::new(8, 7, 0, 255);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 1);
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 2);
@@ -340,13 +362,12 @@ fn three() {
     assert!(matches!(d.pop(), Denoised::Done));
 }
 
-
 #[test]
 fn four() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(254,253,252,255);
-    let b = RGBA8::new(8,7,0,255);
-    let t = RGBA8::new(0,0,0,0);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(254, 253, 252, 255);
+    let b = RGBA8::new(8, 7, 0, 255);
+    let t = RGBA8::new(0, 0, 0, 0);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     d.push_frame(ImgVec::new(vec![t], 1, 1).as_ref(), 1);
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 2);
@@ -362,10 +383,10 @@ fn four() {
 
 #[test]
 fn five() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(254,253,252,255);
-    let b = RGBA8::new(8,7,0,255);
-    let t = RGBA8::new(0,0,0,0);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(254, 253, 252, 255);
+    let b = RGBA8::new(8, 7, 0, 255);
+    let t = RGBA8::new(0, 0, 0, 0);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     d.push_frame(ImgVec::new(vec![t], 1, 1).as_ref(), 1);
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 2);
@@ -383,11 +404,11 @@ fn five() {
 
 #[test]
 fn six() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(254,253,252,255);
-    let b = RGBA8::new(8,7,0,255);
-    let t = RGBA8::new(0,0,0,0);
-    let x = RGBA8::new(4,5,6,255);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(254, 253, 252, 255);
+    let b = RGBA8::new(8, 7, 0, 255);
+    let t = RGBA8::new(0, 0, 0, 0);
+    let x = RGBA8::new(4, 5, 6, 255);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), 0);
     assert!(matches!(d.pop(), Denoised::NotYet));
     d.push_frame(ImgVec::new(vec![b], 1, 1).as_ref(), 1);
@@ -408,13 +429,12 @@ fn six() {
     assert!(matches!(d.pop(), Denoised::Done));
 }
 
-
 #[test]
 fn many() {
-    let mut d = Denoiser::new(1,1, 100);
-    let w = RGBA8::new(255,254,253,255);
-    let b = RGBA8::new(1,2,3,255);
-    let t = RGBA8::new(0,0,0,0);
+    let mut d = Denoiser::new(1, 1, 100);
+    let w = RGBA8::new(255, 254, 253, 255);
+    let b = RGBA8::new(1, 2, 3, 255);
+    let t = RGBA8::new(0, 0, 0, 0);
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), "w0");
     assert!(matches!(d.pop(), Denoised::NotYet));
     d.push_frame(ImgVec::new(vec![w], 1, 1).as_ref(), "w1");
