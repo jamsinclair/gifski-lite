@@ -1,7 +1,7 @@
 [package]
 authors = ["Kornel <kornel@geekhood.net>", "Jamie <jamsinclairnz@gmail.com>"]
 categories = ["multimedia::video", "webassembly"]
-description = "pngquant-based GIF maker for nice-looking animGIFs that supports the WASM."
+description = "pngquant-based GIF maker for nice-looking animGIFs that supports WASM."
 documentation = "https://github.com/jamsinclair/gifski-lite#readme"
 homepage = "https://github.com/jamsinclair/gifski-lite"
 include = ["/README.md", "/Cargo.toml", "/src/**/*.rs"]
