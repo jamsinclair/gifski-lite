@@ -17,7 +17,7 @@ edition = "2018"
 [dependencies]
 gif = "0.11.3"
 gif-dispose = "3.1.1"
-imagequant = { default_features = false, git = "https://github.com/ImageOptim/libimagequant" }
+imagequant = { version = "=4.0.0-beta.8", default_features = false }
 imgref = "1.9.1"
 resize = "0.7.2"
 rgb = "0.8.31"
