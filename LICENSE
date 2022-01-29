@@ -1,5 +1,9 @@
-
-Let [me](https://kornel.ski/contact) know if you'd like to use it in a product incompatible with this license. I can offer alternative licensing options.
+Acknowledgements: This is a fork of the original [gifski](https://github.com/ImageOptim/gifski) project. This fork makes some significant changes:
+- Refactors to slower single-threaded approach (for now, until can get threading working with WebAssembly)
+- Remove features for ffmpeg and gifsicle
+- Removes CLI tool and binarires
+- Removes adding PNG frame files
+- Removes C API
 
 ----
 

@@ -1,23 +1,23 @@
 [package]
-authors = ["Kornel <kornel@geekhood.net>"]
-categories = ["multimedia::video", "command-line-utilities"]
-description = "pngquant-based GIF maker for nice-looking animGIFs"
-documentation = "https://docs.rs/gifski"
-homepage = "https://gif.ski"
-include = ["/README.md", "/Cargo.toml", "/src/**/*.rs", "/src/bin/*.rs"]
-keywords = ["gif", "encoder", "converter", "maker", "gifquant"]
+authors = ["Kornel <kornel@geekhood.net>", "Jamie <jamsinclairnz@gmail.com>"]
+categories = ["multimedia::video", "webassembly"]
+description = "pngquant-based GIF maker for nice-looking animGIFs that supports the WASM."
+documentation = "https://github.com/jamsinclair/gifski-lite#readme"
+homepage = "https://github.com/jamsinclair/gifski-lite"
+include = ["/README.md", "/Cargo.toml", "/src/**/*.rs"]
+keywords = ["gif", "encoder", "converter", "maker", "gifquant", "wasm", "web", "webassembly"]
 license = "AGPL-3.0+"
-name = "gifskilite"
+name = "gifski-lite"
 readme = "README.md"
 repository = "https://github.com/jamsinclair/gifski-lite"
-version = "1.6.4"
+version = "1.0.0"
 autobins = false
 edition = "2018"
 
 [dependencies]
 gif = "0.11.3"
 gif-dispose = "3.1.1"
-imagequant = "4.0.0-beta.7"
+imagequant = { version = "4.0.0-beta.8", default_features = false }
 imgref = "1.9.1"
 resize = "0.7.2"
 rgb = "0.8.31"
@@ -25,15 +25,13 @@ natord = "1.0.9"
 png = "0.17.2"
 quick-error = "2.0.1"
 crossbeam-channel = "0.5.2"
-rayon = "1.2.0"
-log = "0.4.14"
+
+[dev-dependencies]
+lodepng = "3.5.2"
 
 [lib]
 path = "src/lib.rs"
 crate-type = ["lib", "staticlib", "cdylib"]
-
-[[bin]]
-name = "main"
 
 [profile.dev]
 debug = 1
