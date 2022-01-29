@@ -1,53 +1,33 @@
 [package]
-authors = ["Kornel <kornel@geekhood.net>"]
-categories = ["multimedia::video", "command-line-utilities"]
-description = "pngquant-based GIF maker for nice-looking animGIFs"
-documentation = "https://docs.rs/gifski"
-homepage = "https://gif.ski"
-include = ["/README.md", "/Cargo.toml", "/src/**/*.rs", "/src/bin/*.rs"]
-keywords = ["gif", "encoder", "converter", "maker", "gifquant"]
+authors = ["Kornel <kornel@geekhood.net>", "Jamie <jamsinclairnz@gmail.com>"]
+categories = ["multimedia::video", "webassembly"]
+description = "pngquant-based GIF maker for nice-looking animGIFs that supports the WASM."
+documentation = "https://github.com/jamsinclair/gifski-lite#readme"
+homepage = "https://github.com/jamsinclair/gifski-lite"
+include = ["/README.md", "/Cargo.toml", "/src/**/*.rs"]
+keywords = ["gif", "encoder", "converter", "maker", "gifquant", "wasm", "web", "webassembly"]
 license = "AGPL-3.0+"
-name = "gifski"
+name = "gifski-lite"
 readme = "README.md"
-repository = "https://github.com/ImageOptim/gifski"
-version = "1.6.4"
+repository = "https://github.com/jamsinclair/gifski-lite"
+version = "1.0.0"
 autobins = false
 edition = "2018"
 
-[[bin]]
-doctest = false
-name = "gifski"
-
 [dependencies]
-gifsicle = { version = "1.92.5", optional = true }
-clap = "2.34.0"
 gif = "0.11.3"
 gif-dispose = "3.1.1"
-imagequant = "4.0.0-beta.7"
+imagequant = { version = "4.0.0-beta.8", default_features = false }
 imgref = "1.9.1"
-lodepng = "3.5.0"
-pbr = "1.0.4"
 resize = "0.7.2"
 rgb = "0.8.31"
-wild = "2.0.4"
 natord = "1.0.9"
+png = "0.17.2"
 quick-error = "2.0.1"
-dunce = "1.0.2"
 crossbeam-channel = "0.5.2"
 
-[dependencies.ffmpeg]
-package = "ffmpeg-next"
-version = "4.4.0"
-optional = true
-default-features = false
-features = ["codec", "format", "filter", "software-resampling", "software-scaling"]
-
-[features]
-default = ["gifsicle"]
-openmp = [] # deprecated, obsolete
-openmp-static = [] # deprecated, obsolete
-video = ["ffmpeg"]
-video-static = ["video", "ffmpeg/build"]
+[dev-dependencies]
+lodepng = "3.5.2"
 
 [lib]
 path = "src/lib.rs"

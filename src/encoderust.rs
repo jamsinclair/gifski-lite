@@ -21,7 +21,16 @@ impl<W: Write> RustEncoder<W> {
 
 impl<W: Write> Encoder for RustEncoder<W> {
     fn write_frame(&mut self, f: GIFFrame, delay: u16, settings: &Settings) -> CatResult<()> {
-        let GIFFrame {left, top, pal, image, screen_width, screen_height, dispose, transparent_index} = f;
+        let GIFFrame {
+            left,
+            top,
+            pal,
+            image,
+            screen_width,
+            screen_height,
+            dispose,
+            transparent_index,
+        } = f;
 
         let writer = &mut self.writer;
 
@@ -37,7 +46,7 @@ impl<W: Write> Encoder for RustEncoder<W> {
                 let mut enc = gif::Encoder::new(w, screen_width, screen_height, &[])?;
                 enc.write_extension(gif::ExtensionData::Repetitions(repeat))?;
                 self.gif_enc.get_or_insert(enc)
-            },
+            }
             Some(ref mut enc) => enc,
         };
 
