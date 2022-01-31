@@ -14,8 +14,8 @@ pub struct OrdQueueIter<T> {
     receive_buffer: BinaryHeap<ReverseTuple<T>>,
 }
 
-pub fn new<T>(depth: usize) -> (OrdQueue<T>, OrdQueueIter<T>) {
-    let (sender, receiver) = crossbeam_channel::bounded(depth);
+pub fn new<T>() -> (OrdQueue<T>, OrdQueueIter<T>) {
+    let (sender, receiver) = crossbeam_channel::unbounded();
     (
         OrdQueue { sender },
         OrdQueueIter {

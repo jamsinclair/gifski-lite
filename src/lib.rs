@@ -165,7 +165,7 @@ pub fn new(settings: Settings) -> CatResult<(Collector, Writer)> {
     if settings.width.unwrap_or(0) > 1 << 16 || settings.height.unwrap_or(0) > 1 << 16 {
         return Err(Error::WrongSize("image size too large".into()));
     }
-    let (queue, queue_iter) = ordqueue::new(4);
+    let (queue, queue_iter) = ordqueue::new();
 
     Ok((
         Collector {
@@ -458,11 +458,11 @@ impl Writer {
 
         // TODO: use a thread pool that works in WebAssembly Context
         let settings = self.settings;
-        let (quant_queue, quant_queue_recv) = crossbeam_channel::bounded(4);
+        let (quant_queue, quant_queue_recv) = crossbeam_channel::unbounded();
         Self::make_diffs(decode_queue_recv, quant_queue, &settings)?;
-        let (remap_queue, remap_queue_recv) = crossbeam_channel::bounded(8);
+        let (remap_queue, remap_queue_recv) = crossbeam_channel::unbounded();
         Self::quantize_frames(quant_queue_recv, remap_queue, &settings)?;
-        let (write_queue, write_queue_recv) = crossbeam_channel::bounded(6);
+        let (write_queue, write_queue_recv) = crossbeam_channel::unbounded();
         Self::remap_frames(remap_queue_recv, write_queue, &settings)?;
         Self::write_frames(write_queue_recv, encoder, &self.settings)?;
         Ok(())

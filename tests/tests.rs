@@ -9,7 +9,6 @@ use std::io::Read;
 
 // FIXME: There is some kind of deadlock while writing that causes this test not to complete.
 #[test]
-#[ignore]
 fn n_frames() {
     for num_frames in 1..=5 {
         let (mut c, w) = new(Settings::default()).unwrap();
