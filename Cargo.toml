@@ -10,7 +10,7 @@ license = "AGPL-3.0+"
 name = "gifski-lite"
 readme = "README.md"
 repository = "https://github.com/jamsinclair/gifski-lite"
-version = "1.0.0"
+version = "1.0.1"
 autobins = false
 edition = "2018"
 
