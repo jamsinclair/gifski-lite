@@ -459,11 +459,21 @@ impl Writer {
         // TODO: use a thread pool that works in WebAssembly Context
         let settings = self.settings;
         let (quant_queue, quant_queue_recv) = crossbeam_channel::unbounded();
-        Self::make_diffs(decode_queue_recv, quant_queue, &settings)?;
         let (remap_queue, remap_queue_recv) = crossbeam_channel::unbounded();
-        Self::quantize_frames(quant_queue_recv, remap_queue, &settings)?;
         let (write_queue, write_queue_recv) = crossbeam_channel::unbounded();
-        Self::remap_frames(remap_queue_recv, write_queue, &settings)?;
+
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                Self::make_diffs(decode_queue_recv, quant_queue, &settings);
+            });
+            s.spawn(move |_| {
+                Self::quantize_frames(quant_queue_recv, remap_queue, &settings);
+            });
+            s.spawn(move |_| {
+                Self::remap_frames(remap_queue_recv, write_queue, &settings);
+            });
+        });
+
         Self::write_frames(write_queue_recv, encoder, &self.settings)?;
         Ok(())
     }
