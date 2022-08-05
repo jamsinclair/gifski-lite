@@ -14,7 +14,7 @@ gifski-lite is intended to target the Web only (potentially Node.js and Deno too
 
 The recommended way is to add this library as a dependency to a rust project that compiles to WebAssembly.
 
-_&lt;Todo: add link to wasm project here&gt;_
+Currently used in experimental [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) package. ⚠️ It is quite slow due to lack of using web-workers.
 
 ## Building
 
