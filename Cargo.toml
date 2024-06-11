@@ -22,9 +22,9 @@ imgref = "1.9.1"
 resize = "0.7.2"
 rgb = "0.8.31"
 natord = "1.0.9"
-png = "0.17.2"
+png = "0.17.13"
 quick-error = "2.0.1"
-crossbeam-channel = "0.5.2"
+crossbeam-channel = "0.5"
 
 [dev-dependencies]
 lodepng = "3.5.2"
