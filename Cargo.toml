@@ -38,7 +38,7 @@ path = "src/lib.rs"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [features]
-parallel = ["rayon", "crossbeam-channel"]
+parallel = ["rayon"]
 
 [profile.dev]
 debug = 1
