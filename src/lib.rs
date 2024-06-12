@@ -21,9 +21,6 @@ extern crate quick_error;
 #[cfg(feature = "parallel")]
 extern crate rayon;
 
-#[cfg(not(feature = "parallel"))]
-mod rayon;
-
 use imagequant::{Attributes, Image, QuantizationResult};
 use imgref::*;
 use rgb::*;
@@ -39,7 +36,6 @@ mod encoderust;
 use crossbeam_channel::{Receiver, Sender};
 use std::borrow::Cow;
 use std::io::prelude::*;
-use rayon::prelude::*;
 
 type DecodedImage = CatResult<(ImgVec<RGBA8>, f64)>;
 
