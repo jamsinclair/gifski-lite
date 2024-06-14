@@ -24,7 +24,7 @@ fn assert_anim_eq(num_frames: usize, frame_filename: fn(usize) -> PathBuf, frame
                 frame_edit(n, frame.as_mut());
                 c.add_frame_rgba(n, frame, pts).unwrap();
             } else {
-                c.add_frame_png_file(n, name, pts).unwrap();
+                c.add_frame_rgba(n, load_frame(&name), pts).unwrap();
             }
         }
     });
@@ -63,9 +63,9 @@ fn all_dupe_frames() {
     let (c, w) = new(Settings::default()).unwrap();
 
     let t = std::thread::spawn(move || {
-        c.add_frame_png_file(0, frame_filename(1), 0.1).unwrap();
-        c.add_frame_png_file(1, frame_filename(1), 1.2).unwrap();
-        c.add_frame_png_file(2, frame_filename(1), 1.3).unwrap();
+        c.add_frame_rgba(0, load_frame(&frame_filename(1)), 0.1).unwrap();
+        c.add_frame_rgba(1, load_frame(&frame_filename(1)), 1.2).unwrap();
+        c.add_frame_rgba(2, load_frame(&frame_filename(1)), 1.3).unwrap();
     });
 
     let mut out = Vec::new();
@@ -89,9 +89,9 @@ fn all_but_one_dupe_frames() {
     let (c, w) = new(Settings::default()).unwrap();
 
     let t = std::thread::spawn(move || {
-        c.add_frame_png_file(0, frame_filename(0), 0.0).unwrap();
-        c.add_frame_png_file(1, frame_filename(1), 1.2).unwrap();
-        c.add_frame_png_file(2, frame_filename(1), 1.3).unwrap();
+        c.add_frame_rgba(0, load_frame(&frame_filename(0)), 0.0).unwrap();
+        c.add_frame_rgba(1, load_frame(&frame_filename(1)), 1.2).unwrap();
+        c.add_frame_rgba(2, load_frame(&frame_filename(1)), 1.3).unwrap();
     });
 
     let mut out = Vec::new();
@@ -238,4 +238,9 @@ fn assert_images_eq(a: ImgRef<RGBA8>, b: ImgRef<RGBA8>, max_diff: f64, msg: impl
 fn dump(filename: &str, px: ImgRef<RGBA8>) {
     let (buf, w, h) = px.to_contiguous_buf();
     lodepng::encode32_file(format!("/tmp/gifski-test-{filename}.png"), &buf, w, h).unwrap();
+}
+
+fn load_png_file(filename: &str) -> ImgVec<RGBA8> {
+    let img = lodepng::decode32_file(filename).unwrap();
+    ImgVec::new(img.buffer, img.width, img.height)
 }

@@ -3,14 +3,10 @@ use crate::GIFFrame;
 use crate::Settings;
 use crate::SettingsExt;
 use rgb::ComponentBytes;
-use rgb::RGB8;
 use std::cell::Cell;
 use std::io::Write;
 use std::iter::repeat;
 use std::rc::Rc;
-
-#[cfg(feature = "gifsicle")]
-use crate::gifsicle;
 
 struct CountingWriter<W> {
     writer: W,
@@ -86,29 +82,6 @@ impl<W: Write> RustEncoder<W> {
 
         frame.make_lzw_pre_encoded();
         Ok(frame)
-    }
-
-    #[cfg(feature = "gifsicle")]
-    #[inline(never)]
-    fn compress_gifsicle(frame: &mut gif::Frame<'static>, loss: u32) -> CatResult<()> {
-        use crate::Error;
-        use gifsicle::{GiflossyImage, GiflossyWriter};
-
-        let pal = frame.palette.as_ref().ok_or(Error::Gifsicle)?;
-        let g_pal = pal.chunks_exact(3)
-            .map(|c| RGB8 {
-                r: c[0],
-                g: c[1],
-                b: c[2],
-            })
-            .collect::<Vec<_>>();
-
-        let gif_img = GiflossyImage::new(&frame.buffer, frame.width, frame.height, frame.transparent, Some(&g_pal));
-
-        let mut lossy_writer = GiflossyWriter { loss };
-
-        frame.buffer = lossy_writer.write(&gif_img, None)?.into();
-        Ok(())
     }
 
     pub fn write_frame(&mut self, mut frame: gif::Frame<'static>, delay: u16, screen_width: u16, screen_height: u16, settings: &Settings) -> CatResult<()> {

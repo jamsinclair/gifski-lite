@@ -9,15 +9,8 @@ pub use rgb::{RGB8, RGBA8};
 use crate::error::GifResult;
 use crossbeam_channel::Sender;
 
-#[cfg(feature = "png")]
-use std::path::PathBuf;
-
 pub(crate) enum FrameSource {
     Pixels(ImgVec<RGBA8>),
-    #[cfg(feature = "png")]
-    PngData(Vec<u8>),
-    #[cfg(all(feature = "png", not(target_arch = "wasm32")))]
-    Path(PathBuf),
 }
 
 pub(crate) struct InputFrame {
@@ -63,48 +56,6 @@ impl Collector {
             frame_index,
             frame: FrameSource::Pixels(frame),
             presentation_timestamp,
-        })?;
-        Ok(())
-    }
-
-    /// Decode a frame from in-memory PNG-compressed data.
-    ///
-    /// Frame index starts at 0.
-    /// Set each frame (index) only once, but you can set them in any order. However, out-of-order frames
-    /// will be buffered in RAM, and big gaps in frame indices will cause high memory usage.
-    ///
-    /// Presentation timestamp is time in seconds (since file start at 0) when this frame is to be displayed.
-    ///
-    /// If the first frame doesn't start at pts=0, the delay will be used for the last frame.
-    ///
-    /// If this function appears to be stuck after a few frames, it's because [`crate::Writer::write()`] is not running.
-    #[cfg(feature = "png")]
-    #[inline]
-    pub fn add_frame_png_data(&self, frame_index: usize, png_data: Vec<u8>, presentation_timestamp: f64) -> GifResult<()> {
-        self.queue.send(InputFrame {
-            frame: FrameSource::PngData(png_data),
-            presentation_timestamp,
-            frame_index,
-        })?;
-        Ok(())
-    }
-
-    /// Read and decode a PNG file from disk.
-    ///
-    /// Frame index starts at 0.
-    /// Set each frame (index) only once, but you can set them in any order.
-    ///
-    /// Presentation timestamp is time in seconds (since file start at 0) when this frame is to be displayed.
-    ///
-    /// If the first frame doesn't start at pts=0, the delay will be used for the last frame.
-    ///
-    /// If this function appears to be stuck after a few frames, it's because [`crate::Writer::write()`] is not running.
-    #[cfg(feature = "png")]
-    pub fn add_frame_png_file(&self, frame_index: usize, path: PathBuf, presentation_timestamp: f64) -> GifResult<()> {
-        self.queue.send(InputFrame {
-            frame: FrameSource::Path(path),
-            presentation_timestamp,
-            frame_index,
         })?;
         Ok(())
     }

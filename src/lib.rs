@@ -45,7 +45,6 @@ use ordered_channel::Receiver as OrdQueueIter;
 use ordered_channel::bounded as ordqueue_new;
 pub mod progress;
 use crate::progress::*;
-pub mod c_api;
 mod denoise;
 use crate::denoise::*;
 mod encoderust;
@@ -53,9 +52,6 @@ pub mod collector;
 use crate::collector::{InputFrameResized, InputFrame, FrameSource};
 #[doc(inline)]
 pub use crate::collector::Collector;
-
-#[cfg(feature = "gifsicle")]
-mod gifsicle;
 
 mod minipool;
 
@@ -211,26 +207,6 @@ struct FrameMessage {
 /// start writing the GIF.
 ///
 /// If you don't start writing, then adding frames will block forever.
-///
-///
-/// ```rust,no_run
-/// use gifski::*;
-///
-/// let (collector, writer) = gifski::new(Settings::default())?;
-/// std::thread::scope(|t| -> Result<(), Error> {
-///     let frames_thread = t.spawn(move || {
-///         for i in 0..10 {
-///             collector.add_frame_png_file(i, format!("frame{i:04}.png").into(), i as f64 * 0.1)?;
-///         }
-///         drop(collector);
-///         Ok(())
-///     });
-///
-///     writer.write(std::fs::File::create("demo.gif")?, &mut progress::NoProgress{})?;
-///     frames_thread.join().unwrap()
-/// })?;
-/// Ok::<_, Error>(())
-/// ```
 #[inline]
 pub fn new(settings: Settings) -> GifResult<(Collector, Writer)> {
     if settings.quality == 0 || settings.quality > 100 {
