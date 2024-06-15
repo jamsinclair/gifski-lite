@@ -32,10 +32,16 @@ crossbeam-channel = "0.5.11"
 loop9 = "0.1.5"
 crossbeam-utils = "0.8.19"
 ordered-channel = { version = "1.1.0", features = ["crossbeam-channel"] }
-rayon = "1.10.0"
+
+[dependencies.rayon]
+optional = true
+version = "1.10.0"
 
 [dev-dependencies]
 lodepng = "3.10.1"
+
+[features]
+parallel = ["rayon"]
 
 [lib]
 path = "src/lib.rs"

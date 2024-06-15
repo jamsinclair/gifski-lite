@@ -32,6 +32,12 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::wildcard_imports)]
 
+#[cfg(feature = "parallel")]
+extern crate rayon;
+
+#[cfg(not(feature = "parallel"))]
+mod rayon;
+
 use encoderust::RustEncoder;
 use gif::DisposalMethod;
 use imagequant::{Image, QuantizationResult, Attributes};
