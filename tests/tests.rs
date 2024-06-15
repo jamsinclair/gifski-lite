@@ -239,8 +239,3 @@ fn dump(filename: &str, px: ImgRef<RGBA8>) {
     let (buf, w, h) = px.to_contiguous_buf();
     lodepng::encode32_file(format!("/tmp/gifski-test-{filename}.png"), &buf, w, h).unwrap();
 }
-
-fn load_png_file(filename: &str) -> ImgVec<RGBA8> {
-    let img = lodepng::decode32_file(filename).unwrap();
-    ImgVec::new(img.buffer, img.width, img.height)
-}
