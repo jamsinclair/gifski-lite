@@ -751,7 +751,6 @@ impl Writer {
         }
 
         let results: Vec<RemapMessage> = quant_queue.into_par_iter().map(|QuantizeMessage { end_pts, mut image, importance_map, ordinal_frame_number, frame_index, dispose, first_frame_has_transparency, prev_frame_keeps, has_next_frame }| {
-            println!("handling frame {ordinal_frame_number}");
             if prev_frame_keeps {
                 // if denoiser says the background didn't change, then believe it
                 // (except higher quality settings, which try to improve it every time)
@@ -821,7 +820,6 @@ impl Writer {
             #[cfg(debug_assertions)]
             debug_assert!(debug_screen.pixels_rgba() == screen.pixels_rgba(), "fr {ordinal_frame_number} {left}/{top} {}x{}", image8.width(), image8.height());
 
-            println!("remapping frames {ordinal_frame_number}");
             write_queue.send(FrameMessage {
                 frame_index,
                 ordinal_frame_number,
