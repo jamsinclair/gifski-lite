@@ -1,5 +1,7 @@
 // Code used from https://github.com/shssoichiro/oxipng
 // Licensed under the MIT license: https://github.com/shssoichiro/oxipng/blob/90ceef979601e362343aaa159c06513c80034204/LICENSE
+
+use std::{collections::VecDeque, sync::Mutex};
 pub mod prelude {
     pub use super::*;
 }
@@ -80,4 +82,32 @@ pub fn join<A, B>(a: impl FnOnce() -> A, b: impl FnOnce() -> B) -> (A, B) {
 #[allow(dead_code)]
 pub fn spawn<A>(a: impl FnOnce() -> A) -> A {
     a()
+}
+
+pub fn scope_fifo<'scope, F>(f: F)
+where
+    F: FnOnce(&ScopeFifo<'scope>),
+{
+    let scope_fifo = ScopeFifo {
+        tasks: Mutex::new(VecDeque::new()),
+    };
+    f(&scope_fifo);
+    // Execute all tasks synchronously in FIFO order
+    while let Some(task) = scope_fifo.tasks.lock().unwrap().pop_front() {
+        task(&scope_fifo);
+    }
+}
+
+pub struct ScopeFifo<'scope> {
+    tasks: Mutex<VecDeque<Box<dyn FnOnce(&ScopeFifo<'scope>) + Send + 'scope>>>,
+}
+
+impl<'scope> ScopeFifo<'scope> {
+    pub fn spawn_fifo<F>(&self, f: F)
+    where
+        F: FnOnce(&ScopeFifo<'scope>) + Send + 'scope,
+    {
+        let mut tasks = self.tasks.lock().unwrap();
+        tasks.push_back(Box::new(f));
+    }
 }

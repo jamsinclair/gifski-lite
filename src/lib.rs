@@ -48,7 +48,7 @@ mod error;
 pub use crate::error::*;
 use ordered_channel::Sender as OrdQueue;
 use ordered_channel::Receiver as OrdQueueIter;
-use ordered_channel::bounded as ordqueue_new;
+use ordered_channel::unbounded as ordqueue_new;
 pub mod progress;
 use crate::progress::*;
 mod denoise;
@@ -63,7 +63,6 @@ use crossbeam_channel::{Receiver, Sender};
 use std::cell::Cell;
 use std::io::prelude::*;
 use std::rc::Rc;
-use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
@@ -543,31 +542,37 @@ impl Writer {
     }
 
     #[inline(never)]
-    fn write_inner(&self, decode_queue_recv: Receiver<InputFrame>, writer: &mut dyn Write, reporter: &mut dyn ProgressReporter) -> CatResult<()> {
-        thread::scope(|s| {
-            let (diff_queue, diff_queue_recv) = ordqueue_new(0);
-            let resize_thread = thread::Builder::new().name("resize".into()).spawn_scoped(s, move || {
-                self.make_resize(decode_queue_recv, diff_queue)
-            })?;
-            let (quant_queue, quant_queue_recv) = crossbeam_channel::bounded(0);
-            let diff_thread = thread::Builder::new().name("diff".into()).spawn_scoped(s, move || {
-                self.make_diffs(diff_queue_recv, quant_queue)
-            })?;
-            let (remap_queue, remap_queue_recv) = ordqueue_new(0);
-            let quant_thread = thread::Builder::new().name("quant".into()).spawn_scoped(s, move || {
-                self.quantize_frames(quant_queue_recv, remap_queue)
-            })?;
-            let (write_queue, write_queue_recv) = crossbeam_channel::bounded(0);
-            let remap_thread = thread::Builder::new().name("remap".into()).spawn_scoped(s, move || {
-                self.remap_frames(remap_queue_recv, write_queue)
-            })?;
-            let res0 = self.write_frames(write_queue_recv, writer, reporter);
-            let res1 = resize_thread.join().map_err(handle_join_error)?;
-            let res2 = diff_thread.join().map_err(handle_join_error)?;
-            let res3 = quant_thread.join().map_err(handle_join_error)?;
-            let res4 = remap_thread.join().map_err(handle_join_error)?;
-            combine_res(combine_res(combine_res(res0, res1), combine_res(res2, res3)), res4)
-        })
+    fn write_inner(&self, decode_queue_recv: Receiver<InputFrame>, writer: &mut dyn Write, reporter: &mut dyn ProgressReporter) -> CatResult<()> {        
+        // These unbounded channels are not performant, but still seems to result in faster encoding than single-threaded
+        // To make this faster we would need to explore a way to use bounded channels for tighter synchronization between threads
+        let (diff_queue, diff_queue_recv) = ordqueue_new();
+        let (quant_queue, quant_queue_recv) = crossbeam_channel::unbounded();
+        let (remap_queue, remap_queue_recv) = ordqueue_new();
+        let (write_queue, write_queue_recv) = crossbeam_channel::unbounded();
+
+        // The error handling here is terrible, but it'll do as a hack for now
+        rayon::scope_fifo(|s| {
+            let diff_queue_clone = diff_queue;
+            s.spawn_fifo(move |_| {
+                self.make_resize(decode_queue_recv, diff_queue_clone).unwrap();
+            });
+            let quant_queue_clone = quant_queue;
+            s.spawn_fifo(move |_| {
+                self.make_diffs(diff_queue_recv, quant_queue_clone).unwrap();
+            });
+            let remap_queue_clone = remap_queue;
+            s.spawn_fifo(move |_| {
+                self.quantize_frames(quant_queue_recv, remap_queue_clone).unwrap();
+            });
+            let write_queue_clone = write_queue;
+            s.spawn_fifo(move |_| {
+                self.remap_frames(remap_queue_recv, write_queue_clone).unwrap();
+            }); 
+        });
+
+        self.write_frames(write_queue_recv, writer, reporter).unwrap();
+        
+        Ok(())
     }
 
     /// Apply resizing and crate a blurred version for the diff/denoise phase
@@ -816,6 +821,7 @@ impl Writer {
             #[cfg(debug_assertions)]
             debug_assert!(debug_screen.pixels_rgba() == screen.pixels_rgba(), "fr {ordinal_frame_number} {left}/{top} {}x{}", image8.width(), image8.height());
 
+            println!("remapping frames {ordinal_frame_number}");
             write_queue.send(FrameMessage {
                 frame_index,
                 ordinal_frame_number,
@@ -859,19 +865,6 @@ fn transparent_index_from_palette(mut image8_pal: Vec<RGBA8>, mut image8: ImgRef
     }));
 
     (image8_pal.into_iter().map(|r| r.rgb()).collect(), transparent_index)
-}
-
-/// When one thread unexpectedly fails, all other threads fail with Aborted, but that Aborted isn't the relevant cause
-#[inline]
-fn combine_res(res1: Result<(), Error>, res2: Result<(), Error>) -> Result<(), Error> {
-    use Error::*;
-    match (res1, res2) {
-        (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
-        (Err(ThreadSend), res) | (res, Err(ThreadSend)) => res,
-        (Err(Aborted), res) | (res, Err(Aborted)) => res,
-        (Err(NoFrames), res) | (res, Err(NoFrames)) => res,
-        (_, res2) => res2,
-    }
 }
 
 fn trim_image(mut image_trimmed: ImgRef<u8>, image8_pal: &[RGB8], transparent_index: Option<u8>, dispose: DisposalMethod, mut screen: ImgRef<RGBA8>) -> Option<(u16, u16, usize, usize)> {
@@ -968,14 +961,6 @@ impl<T> PushInCapacity<T> for Vec<T> {
             self.push(val);
         }
     }
-}
-
-#[cold]
-fn handle_join_error(err: Box<dyn std::any::Any + Send>) -> Error {
-    let msg = err.downcast_ref::<String>().map(|s| s.as_str())
-    .or_else(|| err.downcast_ref::<&str>().copied()).unwrap_or("unknown panic");
-    eprintln!("thread crashed (this is a bug): {msg}");
-    Error::ThreadSend
 }
 
 #[test]
