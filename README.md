@@ -1,6 +1,7 @@
 # gifski-lite
 
-## ⚠️ This is a highly experimental fork and is not recommended for production use.
+### - ⚠️ This is a highly experimental fork and is not recommended for production use.
+### - ℹ️ You probably want to use JavaScript module [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) which uses this library
 
 Highest-quality GIF encoder for the Web based on [pngquant](https://pngquant.org) and the original [gifski](https://github.com/ImageOptim/gifski).
 
@@ -12,7 +13,9 @@ gifski-lite is intended to target the Web only (potentially Node.js and Deno too
 
 The recommended way is to add this library as a dependency to a rust project that compiles to WebAssembly.
 
-Currently used in experimental [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) package. ⚠️ It is quite slow due to lack of using web-workers.
+Currently used in [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) package. It is ~quite slow due to lack of~ now fast because it supports web-workers.
+
+See the WASM Web App in action at [gifski-wasm.netlify.app](https://gifski-wasm.netlify.app) and other example usage at [jamsinclair/gifski-wasm/examples](https://github.com/jamsinclair/gifski-wasm/tree/main/examples).
 
 ## Building
 
