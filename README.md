@@ -1,7 +1,7 @@
 # gifski-lite
 
 ### - ⚠️ This is a highly experimental fork and is not recommended for production use.
-### - ℹ️ You probably want to use JavaScript module [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) which uses this library
+### - ℹ️ You probably want to use the JavaScript module [gifski-wasm](https://github.com/jamsinclair/gifski-wasm) which uses this library
 
 Highest-quality GIF encoder for the Web based on [pngquant](https://pngquant.org) and the original [gifski](https://github.com/ImageOptim/gifski).
 
